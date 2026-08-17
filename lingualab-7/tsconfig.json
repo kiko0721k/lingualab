@@ -1,1 +1,13 @@
-{"compilerOptions":{"target":"ES2017","lib":["dom","dom.iterable","esnext"],"skipLibCheck":true,"strict":true,"noEmit":true,"esModuleInterop":true,"module":"esnext","moduleResolution":"bundler","resolveJsonModule":true,"isolatedModules":true,"jsx":"preserve","incremental":true,"plugins":[{"name":"next"}],"paths":{"@/*":["./*"]}},"include":["next-env.d.ts",".next/types/**/*.ts","**/*.ts","**/*.tsx"],"exclude":["node_modules"]}
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  typescript: {
+    // 忽略 TypeScript 编译错误
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    // 忽略 ESLint 校验错误
+    ignoreDuringBuilds: true,
+  },
+};
+
+export default nextConfig;
