@@ -1,28 +1,28 @@
 {
-  "name": "lingualab-7",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "baseUrl": ".",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
-  "dependencies": {
-    "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.48.1",
-    "next": "15.1.7",
-    "openai": "^4.85.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "autoprefixer": "^10.4.18",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5.0.0"
-  }
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }
