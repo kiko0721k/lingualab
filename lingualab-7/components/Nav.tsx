@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function Nav(){return <header className="nav"><div className="shell navin"><Link className="brand" href="/"><span className="mark">L</span>LinguaLab</Link><nav className="links"><Link href="/listening">听力</Link><Link href="/reading">阅读</Link><Link href="/speaking">口语</Link><Link href="/vocabulary">单词</Link><Link href="/professional">专业专区</Link></nav><Link className="btn primary" href="/auth/login">登录</Link></div></header>}
