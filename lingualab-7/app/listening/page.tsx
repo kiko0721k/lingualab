@@ -1,3 +1,50 @@
-import Link from "next/link";
-const groups=[['BBC Learning English','BBC','https://www.bbc.co.uk/learningenglish'],['VOA Learning English','VOA','https://learningenglish.voanews.com/'],['TED Talks','TED','https://www.ted.com/talks'],['CET-4','CET',''],['CET-6','CET',''],['TEM-4','TEM',''],['TEM-8','TEM',''],['英美文学','Literature',''],['新闻听力','News','']];
-export default function Listening(){return <div className="shell"><section className="page"><div className="eyebrow">Listening</div><h2 style={{fontSize:42}}>听力材料库</h2><p className="muted">官方资源用外链；你拥有授权的音频可以通过数据库 audio_url 接入播放器。</p></section><div className="grid3">{groups.map(([t,tag,url])=><div className="card" key={t}><span className="chip">{tag}</span><h3>{t}</h3><p className="muted">进入材料目录，后续可绑定逐句、原文、翻译与生词。</p><Link className="btn secondary" href={`/listening?source=${encodeURIComponent(t)}`}>进入材料</Link>{url&&<a className="btn primary" style={{marginLeft:8}} href={url} target="_blank" rel="noreferrer">官方来源</a>}</div>)}</div><section className="section"><div className="card"><h3>精听工作台数据结构</h3><p className="muted">支持 audio_url / transcript / translation / sentence_index / difficulty / license_note。把授权材料写入 Supabase 后即可继续开发逐句播放与学习记录。</p></div></section></div>}
+import Link from 'next/link';
+
+const categories = [
+  { id: 'bbc', tag: 'BBC', title: 'BBC Learning English', desc: '进入材料目录，包含逐句原文、翻译与音频播放。', official: 'https://www.bbc.co.uk/learningenglish' },
+  { id: 'voa', tag: 'VOA', title: 'VOA Learning English', desc: '进入材料目录，包含逐句原文、翻译与音频播放。', official: 'https://learningenglish.voanews.com' },
+  { id: 'ted', tag: 'TED', title: 'TED Talks', desc: '进入材料目录，包含逐句原文、翻译与音频播放。', official: 'https://www.ted.com' },
+  { id: 'cet4', tag: 'CET', title: 'CET-4', desc: '进入材料目录，包含逐句原文、翻译与音频播放。' },
+  { id: 'cet6', tag: 'CET', title: 'CET-6', desc: '进入材料目录，包含逐句原文、翻译与音频播放。' },
+  { id: 'tem4', tag: 'TEM', title: 'TEM-4', desc: '进入材料目录，包含逐句原文、翻译与音频播放。' },
+  { id: 'tem8', tag: 'TEM', title: 'TEM-8', desc: '进入材料目录，包含逐句原文、翻译与音频播放。' },
+  { id: 'literature', tag: 'Literature', title: '英美文学', desc: '进入材料目录，包含逐句原文、翻译与音频播放。' },
+  { id: 'news', tag: 'News', title: '新闻听力', desc: '进入材料目录，包含逐句原文、翻译与音频播放。' },
+];
+
+export default function ListeningPage() {
+  return (
+    <div className="max-w-7xl mx-auto p-8">
+      <div className="grid md:grid-cols-3 gap-6">
+        {categories.map((item) => (
+          <div key={item.id} className="bg-white border rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+            <div>
+              <span className="text-xs px-2.5 py-1 bg-gray-100 rounded-full text-gray-600 font-medium">
+                {item.tag}
+              </span>
+              <h2 className="text-xl font-bold mt-3 mb-2">{item.title}</h2>
+              <p className="text-sm text-gray-500 leading-relaxed mb-6">{item.desc}</p>
+            </div>
+
+            <div className="flex space-x-3">
+              {/* 用 Link 包裹按钮实现活的页面跳转 */}
+              <Link href={`/listening/${item.id}`}>
+                <button className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm px-4 py-2 rounded-lg font-medium transition">
+                  进入材料
+                </button>
+              </Link>
+
+              {item.official && (
+                <a href={item.official} target="_blank" rel="noreferrer">
+                  <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium transition">
+                    官方来源
+                  </button>
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
