@@ -2,37 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
-
-// 初始化 Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// 1. 本地超全核心词库（保证离线/断网/缺失时 100% 秒出）
-const BUILTIN_DICT: Record<string, any> = {
-  fuck: {
-    word: 'fuck',
-    phonetic: 'fʌk',
-    translation: 'v. 诅咒，极度厌恶；杂交 n. 毫不在乎；极其糟糕的事物',
-    etymology: '源自原始日耳曼语 *fukkōną（意为“打、击、扑”），最早于 15 世纪出现在英语文献中，属于古老的强烈感情色彩词汇。',
-    meanings: ['v. 表达强烈愤怒或沮丧', 'n. 常用作感叹词或强烈语气助词']
-  },
-  lab: {
-    word: 'lab',
-    phonetic: 'læb',
-    translation: 'n. 实验室；研究室',
-    etymology: 'Laboratory 的缩写，源自拉丁语 laborare（意为“工作、劳作、艰辛”）。',
-    meanings: ['n. 进行科学实验、研究或测试的场所']
-  },
-  ephemeral: {
-    word: 'ephemeral',
-    phonetic: 'ɪˈfemərəl',
-    translation: 'adj. 转瞬即逝的，短暂的',
-    etymology: '源自希腊语 ephemeros（epi "在...上" + hemera "一天"），原指“只活一天的生物/蜉蝣”。',
-    meanings: ['adj. 持续时间极短的；朝生暮死的']
-  }
-};
 
 export default function DictionaryPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,145 +11,119 @@ export default function DictionaryPage() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const query = searchTerm.trim().toLowerCase();
+    const query = searchTerm.trim();
     if (!query) return;
 
     setLoading(true);
     setError('');
     setResult(null);
 
-    // 第一重防护：匹配本地离线词库（0毫秒延迟）
-    if (BUILTIN_DICT[query]) {
-      setResult(BUILTIN_DICT[query]);
-      setLoading(false);
-      return;
-    }
-
-    // 第二重防护：查询 Supabase 云端数据库
     try {
-      if (supabaseUrl && supabaseAnonKey) {
-        // 尝试查询 dictionary 表或 vocabulary 表
-        const { data } = await supabase
-          .from('dictionary')
-          .select('*')
-          .ilike('word', query)
-          .maybeSingle();
-
-        if (data) {
-          setResult({
-            word: data.word,
-            phonetic: data.phonetic || '',
-            translation: data.translation || data.meaning || '暂无释义',
-            etymology: data.etymology || '数据库暂无该词的深度词源记录。',
-            meanings: data.meanings || [data.translation]
-          });
-          setLoading(false);
-          return;
-        }
-      }
-    } catch (dbErr) {
-      console.warn('Supabase 查询跳过，切换至公网 API');
-    }
-
-    // 第三重防护：请求公网 API（带 3 秒防卡死超时控制）
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时自动切断
-
-      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`, {
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (!res.ok) throw new Error('未查到该词，请检查拼写');
+      // 访问我们自己刚刚建立的服务端 API
+      const res = await fetch(`/api/dict?word=${encodeURIComponent(query)}`);
       const data = await res.json();
-      const entry = data[0];
 
-      setResult({
-        word: entry.word,
-        phonetic: entry.phonetic || (entry.phonetics.find((p: any) => p.text)?.text) || '',
-        translation: entry.meanings.map((m: any) => `${m.partOfSpeech}. ${m.definitions[0]?.definition || ''}`).join('; '),
-        etymology: '该词来源于印欧语系演变，请参考专业词源词典。',
-        meanings: entry.meanings.map((m: any) => `${m.partOfSpeech}. ${m.definitions[0]?.definition || ''}`)
-      });
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        setError('网络连接超时，已为你终止请求。请检查网络或更换单词试下！');
-      } else {
-        setError(err.message || '词库中暂未收录该词');
+      if (!res.ok) {
+        throw new Error(data.error || '未查到该词');
       }
+
+      setResult(data);
+    } catch (err: any) {
+      setError(err.message || '查询失败');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      {/* 全局导航栏：永远保留 LINGUALAB 首页一键返回 */}
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="text-xl font-black tracking-tight text-blue-600 hover:opacity-80 transition-opacity">
-            LINGUALAB
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {/* 顶部固定导航 */}
+      <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <span style={{ fontSize: '20px', fontWeight: '900', color: '#2563eb', letterSpacing: '-0.025em' }}>
+              LINGUALAB
+            </span>
           </Link>
-          <nav className="flex items-center gap-6 text-sm font-semibold text-slate-600">
-            <Link href="/" className="hover:text-blue-600 transition-colors">首页</Link>
-            <Link href="/listening" className="hover:text-blue-600 transition-colors">听力</Link>
-            <Link href="/reading" className="hover:text-blue-600 transition-colors">阅读</Link>
-            <Link href="/speaking" className="hover:text-blue-600 transition-colors">口语</Link>
-            <Link href="/vocabulary" className="text-blue-600 font-bold">查词</Link>
+          <nav style={{ display: 'flex', gap: '20px', fontSize: '14px', fontWeight: '600' }}>
+            <Link href="/" style={{ color: '#64748b', textDecoration: 'none' }}>首页</Link>
+            <Link href="/listening" style={{ color: '#64748b', textDecoration: 'none' }}>听力</Link>
+            <Link href="/reading" style={{ color: '#64748b', textDecoration: 'none' }}>阅读</Link>
+            <Link href="/speaking" style={{ color: '#64748b', textDecoration: 'none' }}>口语</Link>
+            <Link href="/vocabulary" style={{ color: '#2563eb', textDecoration: 'none' }}>查词</Link>
           </nav>
         </div>
       </header>
 
-      {/* 查词主体内容 */}
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">查词与词源分析</h1>
-          <p className="mt-2 text-sm text-slate-500">云端 Supabase + 本地双词库保障，检索音标、释义与词源背景</p>
+      {/* 主体查询界面（采用原生 inline-style，零依赖，绝对不会掉样式） */}
+      <main style={{ maxWidth: '768px', margin: '0 auto', padding: '48px 24px' }}>
+        <div style={{ textBaseline: 'center', textAlign: 'center', marginBottom: '32px' }}>
+          <h1 style={{ fontSize: '30px', fontWeight: '800', color: '#0f172a', margin: '0 0 8px 0' }}>查词与词源分析</h1>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>服务端直连检索，秒出音标、权威释义与解析</p>
         </div>
 
-        <form onSubmit={handleSearch} className="flex gap-3 mb-8">
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
           <input
             type="text"
-            placeholder="输入要检索的单词（如 fuck, lab, ephemeral）..."
+            placeholder="输入要检索的单词（如 happy, lab, ephemeral）..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-base focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-sm"
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              borderRadius: '12px',
+              border: '1px solid #cbd5e1',
+              fontSize: '16px',
+              outline: 'none',
+              backgroundColor: '#ffffff'
+            }}
           />
           <button
             type="submit"
             disabled={loading}
-            className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 transition-colors disabled:bg-blue-400"
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              fontWeight: '600',
+              fontSize: '16px',
+              border: 'none',
+              cursor: 'pointer',
+              opacity: loading ? 0.7 : 1
+            }}
           >
             {loading ? '检索中...' : '查 词'}
           </button>
         </form>
 
         {error && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-800">
+          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#fffbebfb', border: '1px solid #fef3c7', color: '#92400e', textAlign: 'center', fontSize: '14px' }}>
             {error}
           </div>
         )}
 
         {result && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-            <div className="flex items-baseline gap-4 border-b border-slate-100 pb-4">
-              <h2 className="text-3xl font-bold text-slate-900">{result.word}</h2>
-              {result.phonetic && <span className="text-lg font-medium text-blue-600">/{result.phonetic}/</span>}
+          <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
+              <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', margin: 0 }}>{result.word}</h2>
+              {result.phonetic && <span style={{ fontSize: '16px', color: '#2563eb', fontWeight: '600' }}>/{result.phonetic}/</span>}
             </div>
 
-            {/* 词源分析板块 */}
-            {result.etymology && (
-              <div className="rounded-xl bg-blue-50/50 p-4 border border-blue-100">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-blue-700 mb-1">Etymology 词源解析</h3>
-                <p className="text-sm text-slate-700 leading-relaxed">{result.etymology}</p>
-              </div>
-            )}
+            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#eff6ff', borderRadius: '12px', border: '1px solid #dbeafe' }}>
+              <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#1d4ed8', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Etymology 词源解析</h3>
+              <p style={{ fontSize: '14px', color: '#1e3a8a', margin: 0, lineHeight: '1.5' }}>{result.etymology}</p>
+            </div>
 
-            {/* 详细释义 */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">释义与词性</h3>
-              <p className="text-base text-slate-800 font-medium leading-relaxed">{result.translation}</p>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', margin: 0 }}>释义与例句</h3>
+              {result.meanings.map((m: any, i: number) => (
+                <div key={i} style={{ fontSize: '15px', color: '#334155', lineHeight: '1.6' }}>
+                  <span style={{ fontWeight: '700', color: '#2563eb', marginRight: '8px' }}>{m.partOfSpeech}</span>
+                  <span>{m.definition}</span>
+                  {m.example && <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', fontStyle: 'italic' }}>例："{m.example}"</p>}
+                </div>
+              ))}
             </div>
           </div>
         )}
