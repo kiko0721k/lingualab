@@ -14,29 +14,28 @@ const categories = [
 
 export default function ListeningPage() {
   return (
-    <div className="max-w-7xl mx-auto p-8">
-      <div className="grid md:grid-cols-3 gap-6">
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {categories.map((item) => (
-          <div key={item.id} className="bg-white border rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+          <div key={item.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
             <div>
-              <span className="text-xs px-2.5 py-1 bg-gray-100 rounded-full text-gray-600 font-medium">
+              <span className="inline-block text-xs px-2.5 py-1 bg-gray-100 rounded-full text-gray-600 font-medium">
                 {item.tag}
               </span>
-              <h2 className="text-xl font-bold mt-3 mb-2">{item.title}</h2>
+              <h2 className="text-xl font-bold mt-3 mb-2 text-gray-900">{item.title}</h2>
               <p className="text-sm text-gray-500 leading-relaxed mb-6">{item.desc}</p>
             </div>
 
-            <div className="flex space-x-3">
-              {/* 用 Link 包裹按钮实现活的页面跳转 */}
-              <Link href={`/listening/${item.id}`}>
-                <button className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm px-4 py-2 rounded-lg font-medium transition">
+            <div className="flex items-center space-x-3 pt-2">
+              <Link href={`/listening/${item.id}`} className="inline-block">
+                <button className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm px-4 py-2 rounded-lg font-medium transition cursor-pointer">
                   进入材料
                 </button>
               </Link>
 
               {item.official && (
-                <a href={item.official} target="_blank" rel="noreferrer">
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium transition">
+                <a href={item.official} target="_blank" rel="noreferrer" className="inline-block">
+                  <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium transition cursor-pointer">
                     官方来源
                   </button>
                 </a>
