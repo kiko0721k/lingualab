@@ -9,6 +9,24 @@ export default function DictionaryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 播放发音（优先用 API 音频，备用浏览器自带真人发音）
+  const playAudio = () => {
+    if (result?.audio) {
+      const audio = new Audio(result.audio);
+      audio.play().catch(() => playSpeech());
+    } else {
+      playSpeech();
+    }
+  };
+
+  const playSpeech = () => {
+    if ('speechSynthesis' in window && result?.word) {
+      const utterance = new SpeechSynthesisUtterance(result.word);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchTerm.trim();
@@ -19,14 +37,10 @@ export default function DictionaryPage() {
     setResult(null);
 
     try {
-      // 访问我们自己刚刚建立的服务端 API
       const res = await fetch(`/api/dict?word=${encodeURIComponent(query)}`);
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || '未查到该词');
-      }
-
+      if (!res.ok) throw new Error(data.error || '未查到该词');
       setResult(data);
     } catch (err: any) {
       setError(err.message || '查询失败');
@@ -36,92 +50,90 @@ export default function DictionaryPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', color: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {/* 顶部固定导航 */}
-      <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <span style={{ fontSize: '20px', fontWeight: '900', color: '#2563eb', letterSpacing: '-0.025em' }}>
-              LINGUALAB
-            </span>
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      {/* 顶部固定导航栏 */}
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <Link href="/" className="text-xl font-black tracking-tight text-blue-600 hover:opacity-80 transition-opacity">
+            LINGUALAB
           </Link>
-          <nav style={{ display: 'flex', gap: '20px', fontSize: '14px', fontWeight: '600' }}>
-            <Link href="/" style={{ color: '#64748b', textDecoration: 'none' }}>首页</Link>
-            <Link href="/listening" style={{ color: '#64748b', textDecoration: 'none' }}>听力</Link>
-            <Link href="/reading" style={{ color: '#64748b', textDecoration: 'none' }}>阅读</Link>
-            <Link href="/speaking" style={{ color: '#64748b', textDecoration: 'none' }}>口语</Link>
-            <Link href="/vocabulary" style={{ color: '#2563eb', textDecoration: 'none' }}>查词</Link>
+          <nav className="flex items-center gap-6 text-sm font-semibold text-slate-600">
+            <Link href="/" className="hover:text-blue-600 transition-colors">首页</Link>
+            <Link href="/listening" className="hover:text-blue-600 transition-colors">听力</Link>
+            <Link href="/reading" className="hover:text-blue-600 transition-colors">阅读</Link>
+            <Link href="/speaking" className="hover:text-blue-600 transition-colors">口语</Link>
+            <Link href="/vocabulary" className="text-blue-600 font-bold">查词</Link>
           </nav>
         </div>
       </header>
 
-      {/* 主体查询界面（采用原生 inline-style，零依赖，绝对不会掉样式） */}
-      <main style={{ maxWidth: '768px', margin: '0 auto', padding: '48px 24px' }}>
-        <div style={{ textBaseline: 'center', textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '30px', fontWeight: '800', color: '#0f172a', margin: '0 0 8px 0' }}>查词与词源分析</h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>服务端直连检索，秒出音标、权威释义与解析</p>
+      {/* 查词主体 */}
+      <main className="mx-auto max-w-3xl px-6 py-12">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">查词与词源分析</h1>
+          <p className="mt-2 text-sm text-slate-500">检索标准音标、真人发音与权威释义</p>
         </div>
 
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
+        <form onSubmit={handleSearch} className="flex gap-3 mb-8">
           <input
             type="text"
-            placeholder="输入要检索的单词（如 happy, lab, ephemeral）..."
+            placeholder="输入要检索的英语单词..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '12px 16px',
-              borderRadius: '12px',
-              border: '1px solid #cbd5e1',
-              fontSize: '16px',
-              outline: 'none',
-              backgroundColor: '#ffffff'
-            }}
+            className="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-base focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-sm"
           />
           <button
             type="submit"
             disabled={loading}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
-              fontWeight: '600',
-              fontSize: '16px',
-              border: 'none',
-              cursor: 'pointer',
-              opacity: loading ? 0.7 : 1
-            }}
+            className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 transition-colors disabled:bg-blue-400"
           >
             {loading ? '检索中...' : '查 词'}
           </button>
         </form>
 
         {error && (
-          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#fffbebfb', border: '1px solid #fef3c7', color: '#92400e', textAlign: 'center', fontSize: '14px' }}>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-800">
             {error}
           </div>
         )}
 
         {result && (
-          <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
-              <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', margin: 0 }}>{result.word}</h2>
-              {result.phonetic && <span style={{ fontSize: '16px', color: '#2563eb', fontWeight: '600' }}>/{result.phonetic}/</span>}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+            {/* 头部：单词 + 音标 + 发音小喇叭 */}
+            <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold text-slate-900">{result.word}</h2>
+              {result.phonetic && <span className="text-lg font-medium text-blue-600">/{result.phonetic}/</span>}
+              
+              {/* 真人发音按钮 */}
+              <button
+                onClick={playAudio}
+                className="flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-100 transition-colors"
+                title="点击播放发音"
+              >
+                🔊 听发音
+              </button>
             </div>
 
-            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#eff6ff', borderRadius: '12px', border: '1px solid #dbeafe' }}>
-              <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#1d4ed8', textTransform: 'uppercase', margin: '0 0 4px 0' }}>Etymology 词源解析</h3>
-              <p style={{ fontSize: '14px', color: '#1e3a8a', margin: 0, lineHeight: '1.5' }}>{result.etymology}</p>
-            </div>
-
-            <div style={{ display: 'grid', gap: '12px' }}>
-              <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', margin: 0 }}>释义与例句</h3>
-              {result.meanings.map((m: any, i: number) => (
-                <div key={i} style={{ fontSize: '15px', color: '#334155', lineHeight: '1.6' }}>
-                  <span style={{ fontWeight: '700', color: '#2563eb', marginRight: '8px' }}>{m.partOfSpeech}</span>
-                  <span>{m.definition}</span>
-                  {m.example && <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', fontStyle: 'italic' }}>例："{m.example}"</p>}
+            {/* 详细释义列表 */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">释义与例句</h3>
+              {result.meanings.map((m: any, idx: number) => (
+                <div key={idx} className="space-y-2">
+                  <span className="inline-block rounded bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                    {m.partOfSpeech}
+                  </span>
+                  <ul className="list-disc list-inside space-y-1 pl-1">
+                    {m.definitions.map((d: any, dIdx: number) => (
+                      <li key={dIdx} className="text-sm text-slate-700 leading-relaxed">
+                        <span>{d.definition}</span>
+                        {d.example && (
+                          <p className="mt-0.5 text-xs text-slate-500 italic pl-4">
+                            例："{d.example}"
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>
