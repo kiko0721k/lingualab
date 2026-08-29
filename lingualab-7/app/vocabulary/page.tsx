@@ -1,1 +1,55 @@
-"use client";import {useState} from 'react';type E={word?:string;phonetic?:string;meanings?:string[];examples?:string[];audio?:string;etymology?:string;memory?:string};export default function Vocabulary(){const[q,setQ]=useState('democracy');const[e,setE]=useState<E|null>(null);const[err,setErr]=useState('');async function lookup(){setErr('');const r=await fetch('/api/dictionary?word='+encodeURIComponent(q));const d=await r.json();if(!r.ok)return setErr(d.error||'查词失败');setE(d)}return <div className="shell"><section className="page"><div className="eyebrow">Vocabulary Lab</div><h2 style={{fontSize:42}}>像词典一样学单词</h2><p className="muted">音标、发音、释义、例句、词源与记忆方法放在同一张词卡里。</p></section><div style={{display:'flex',gap:10,flexWrap:'wrap'}}><input className="search" value={q} onChange={x=>setQ(x.target.value)} onKeyDown={x=>x.key==='Enter'&&lookup()} placeholder="输入英文单词"/><button className="btn primary" onClick={lookup}>查词</button></div>{err&&<div className="alert" style={{marginTop:14}}>{err}</div>}{e&&<div className="layout" style={{marginTop:18}}><div className="card"><div className="eyebrow">Dictionary</div><h1 className="word">{e.word}</h1><div className="phonetic">{e.phonetic}</div>{e.audio&&<audio controls style={{width:'100%',marginTop:14}} src={e.audio}/>}<h3 style={{marginTop:24}}>释义</h3>{e.meanings?.map((m,i)=><p className="definition" key={i}>{m}</p>)}<h3>例句</h3>{e.examples?.map((x,i)=><p className="quote" key={i}>{x}</p>)}</div><div className="card"><h3>词源 / 构词</h3><p className="muted">{e.etymology||'当前词典数据源没有提供可靠词源字段。后续可接入专门的词源数据库。'}</p><h3>记忆方法</h3><p className="muted">{e.memory}</p><button className="btn primary" onClick={()=>alert('登录后将把它写入 Supabase 生词本。')}>收藏到生词本</button></div></div>}</div>}
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+
+export default function VocabularyPage() {
+  const [search, setSearch] = useState('');
+
+  return (
+    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div>
+          <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>我的生词本</h1>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>积累划词生词，结合艾宾浩斯曲线定时复习</p>
+        </div>
+        <Link
+          href="/vocabulary/review"
+          style={{
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            padding: '10px 18px',
+            borderRadius: '10px',
+            fontWeight: '600',
+            fontSize: '14px',
+            textDecoration: 'none',
+          }}
+        >
+          开始复习卡片 →
+        </Link>
+      </div>
+
+      <div style={{ marginBottom: '20px' }}>
+        <input
+          type="text"
+          placeholder="搜索已保存的生词..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            border: '1px solid #cbd5e1',
+            outline: 'none',
+            fontSize: '14px',
+            boxSizing: 'border-box',
+          }}
+        />
+      </div>
+
+      <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+        暂无生词记录，去听力库划词收藏吧！
+      </div>
+    </div>
+  );
+}
