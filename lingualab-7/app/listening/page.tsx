@@ -21,27 +21,23 @@ const CATEGORIES = [
 ];
 
 export default function ListeningPage() {
-  const [selectedCat, setSelectedCat] = useState<string>('BBC');
+  const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [materials, setMaterials] = useState<any[]>([]);
   const [activeMaterial, setActiveMaterial] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  
-  // 播放与高亮同步
-  const [currentTime, setCurrentTime] = useState(0);
+
+  // 播放同步与高亮
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 划词取词弹窗状态
+  // 划词取词弹窗
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [wordInfo, setWordInfo] = useState<any>(null);
   const [wordLoading, setWordLoading] = useState(false);
 
-  // 加载所选分类材料
-  useEffect(() => {
-    fetchMaterials(selectedCat);
-  }, [selectedCat]);
-
-  const fetchMaterials = async (catId: string) => {
+  // 点击卡片进入材料库，拉取数据库数据
+  const handleSelectCategory = async (catId: string) => {
+    setSelectedCat(catId);
     setLoading(true);
     setActiveMaterial(null);
     try {
@@ -52,7 +48,7 @@ export default function ListeningPage() {
 
       if (data && data.length > 0) {
         setMaterials(data);
-        setActiveMaterial(data[0]); // 默认加载第一条材料
+        setActiveMaterial(data[0]);
       } else {
         setMaterials([]);
       }
@@ -63,11 +59,10 @@ export default function ListeningPage() {
     }
   };
 
-  // 音频播放进度监听，实时高亮句子
+  // 监听音频播放时间高亮逐句
   const handleTimeUpdate = () => {
     if (!audioRef.current || !activeMaterial?.transcript) return;
     const time = audioRef.current.currentTime;
-    setCurrentTime(time);
 
     const index = activeMaterial.transcript.findIndex(
       (item: any) => time >= item.start && time <= item.end
@@ -77,7 +72,7 @@ export default function ListeningPage() {
     }
   };
 
-  // 点击句子跳转播放
+  // 跳转到对应句子播放
   const jumpToSentence = (start: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = start;
@@ -85,7 +80,7 @@ export default function ListeningPage() {
     }
   };
 
-  // 点词即查（查询 Supabase 词库）
+  // 点词即查 Supabase 词库
   const handleWordClick = async (rawWord: string) => {
     const cleanWord = rawWord.replace(/[^a-zA-Z]/g, '').toLowerCase();
     if (!cleanWord) return;
@@ -101,13 +96,9 @@ export default function ListeningPage() {
         .ilike('word', cleanWord)
         .maybeSingle();
 
-      if (data) {
-        setWordInfo(data);
-      } else {
-        setWordInfo({ word: cleanWord, meaning: '词库中暂未收录该词释义' });
-      }
+      setWordInfo(data || { word: cleanWord, meaning: '词库未收录该单词' });
     } catch {
-      setWordInfo({ word: cleanWord, meaning: '查询超时，请稍后重试' });
+      setWordInfo({ word: cleanWord, meaning: '查词超时' });
     } finally {
       setWordLoading(false);
     }
@@ -130,124 +121,128 @@ export default function ListeningPage() {
 
       <main className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Listening Hub 精听工作台</h1>
-          <p className="mt-2 text-sm text-slate-500">点击材料实时精听，点击任意单词即可调取 Supabase 词库查看释义与音标</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Listening Hub</h1>
+          <p className="mt-2 text-sm text-slate-500">选择专区进入材料库，开始逐句精听与划词学习</p>
         </div>
 
-        {/* 专区选择列表 */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-3 mb-8">
+        {/* 1. 完整保留原版的 9 大卡片结构 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {CATEGORIES.map((cat) => (
-            <button
+            <div
               key={cat.id}
-              onClick={() => setSelectedCat(cat.id)}
-              className={`rounded-xl border p-3 text-left transition-all ${
-                selectedCat === cat.id
-                  ? 'border-blue-600 bg-blue-50/50 ring-2 ring-blue-100'
-                  : 'border-slate-200 bg-white hover:border-slate-300'
+              className={`rounded-2xl border p-6 transition-all bg-white shadow-sm hover:shadow-md ${
+                selectedCat === cat.id ? 'border-blue-600 ring-2 ring-blue-100' : 'border-slate-200'
               }`}
             >
-              <span className="block text-[10px] font-bold uppercase text-blue-600">{cat.tag}</span>
-              <span className="block text-sm font-bold text-slate-900 truncate">{cat.id}</span>
-            </button>
+              <div className="flex items-center justify-between mb-3">
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600">
+                  {cat.tag}
+                </span>
+                <span className="text-xs font-bold text-slate-400">{cat.id}</span>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">{cat.name}</h3>
+              <p className="text-xs text-slate-500 leading-relaxed mb-6 h-10">{cat.desc}</p>
+              <button
+                onClick={() => handleSelectCategory(cat.id)}
+                className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition-colors"
+              >
+                进入材料库 →
+              </button>
+            </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* 左侧：材料选择 */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-base font-bold text-slate-900 mb-4">{selectedCat} 篇目列表</h3>
+        {/* 2. 点击卡片后在下方展开数据库精听工作台 */}
+        {selectedCat && (
+          <div className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 mb-6 border-b border-slate-100 pb-4">
+              专区数据库：<span className="text-blue-600">{selectedCat}</span> 材料库
+            </h2>
+
             {loading ? (
-              <p className="text-sm text-slate-400">加载中...</p>
+              <p className="text-sm text-slate-400">正在调取数据库...</p>
             ) : materials.length > 0 ? (
-              <div className="space-y-3">
-                {materials.map((m) => (
-                  <div
-                    key={m.id}
-                    onClick={() => setActiveMaterial(m)}
-                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                      activeMaterial?.id === m.id
-                        ? 'border-blue-600 bg-blue-50/40 font-semibold text-blue-900'
-                        : 'border-slate-100 hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <p className="text-sm leading-snug">{m.title}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400">该专区暂未收录材料。</p>
-            )}
-          </div>
-
-          {/* 右侧：精听与逐句高亮控制台 */}
-          <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between">
-            {activeMaterial ? (
-              <div>
-                <div className="border-b border-slate-100 pb-4 mb-6">
-                  <span className="rounded-md bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700 mb-2 inline-block">
-                    {activeMaterial.category}
-                  </span>
-                  <h2 className="text-xl font-bold text-slate-900">{activeMaterial.title}</h2>
-                  
-                  {/* 音频控制 */}
-                  <audio
-                    ref={audioRef}
-                    controls
-                    src={activeMaterial.audio_url}
-                    onTimeUpdate={handleTimeUpdate}
-                    className="w-full mt-4 h-10"
-                  />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* 左侧材料篇目 */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase">选择篇目</h4>
+                  {materials.map((m) => (
+                    <div
+                      key={m.id}
+                      onClick={() => setActiveMaterial(m)}
+                      className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        activeMaterial?.id === m.id
+                          ? 'border-blue-600 bg-blue-50/50 font-semibold text-blue-900'
+                          : 'border-slate-100 hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <p className="text-sm leading-snug">{m.title}</p>
+                    </div>
+                  ))}
                 </div>
 
-                {/* 逐句字幕与点击查词 */}
-                <div className="space-y-4 max-h-[480px] overflow-y-auto pr-2">
-                  {activeMaterial.transcript?.map((item: any, idx: number) => {
-                    const isActive = activeIndex === idx;
-                    return (
-                      <div
-                        key={item.id || idx}
-                        className={`p-4 rounded-xl border transition-all ${
-                          isActive
-                            ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-100'
-                            : 'border-slate-100 bg-slate-50/50 hover:border-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-slate-400">句 #{idx + 1}</span>
-                          <button
-                            onClick={() => jumpToSentence(item.start)}
-                            className="text-xs font-bold text-blue-600 hover:underline"
+                {/* 右侧音频 + 逐句精听 + 点击取词 */}
+                {activeMaterial && (
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                      <h3 className="font-bold text-slate-900 mb-2">{activeMaterial.title}</h3>
+                      <audio
+                        ref={audioRef}
+                        controls
+                        src={activeMaterial.audio_url}
+                        onTimeUpdate={handleTimeUpdate}
+                        className="w-full h-10"
+                      />
+                    </div>
+
+                    <div className="space-y-3 max-h-[450px] overflow-y-auto pr-2">
+                      {activeMaterial.transcript?.map((item: any, idx: number) => {
+                        const isActive = activeIndex === idx;
+                        return (
+                          <div
+                            key={item.id || idx}
+                            className={`p-4 rounded-xl border transition-all ${
+                              isActive
+                                ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-100'
+                                : 'border-slate-100 bg-white hover:border-slate-200'
+                            }`}
                           >
-                            ▶ 播放此句
-                          </button>
-                        </div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs font-bold text-slate-400">句 #{idx + 1}</span>
+                              <button
+                                onClick={() => jumpToSentence(item.start)}
+                                className="text-xs font-bold text-blue-600 hover:underline"
+                              >
+                                ▶ 播放本句
+                              </button>
+                            </div>
 
-                        {/* 单词拆解实现点词即查 */}
-                        <p className="text-base leading-relaxed text-slate-800">
-                          {item.text.split(' ').map((word: string, wIdx: number) => (
-                            <span
-                              key={wIdx}
-                              onClick={() => handleWordClick(word)}
-                              className="cursor-pointer hover:bg-yellow-200 hover:text-slate-900 rounded px-0.5 transition-colors inline-block mr-1"
-                            >
-                              {word}
-                            </span>
-                          ))}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
+                            <p className="text-base text-slate-900 font-medium leading-relaxed">
+                              {item.en.split(' ').map((word: string, wIdx: number) => (
+                                <span
+                                  key={wIdx}
+                                  onClick={() => handleWordClick(word)}
+                                  className="cursor-pointer hover:bg-yellow-200 rounded px-0.5 transition-colors inline-block mr-1"
+                                >
+                                  {word}
+                                </span>
+                              ))}
+                            </p>
+                            {item.cn && <p className="text-xs text-slate-500 mt-1">{item.cn}</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
-                请在左侧选择一篇听力材料开始练习
-              </div>
+              <p className="text-sm text-slate-400">暂无数据，请确认已在 Supabase 运行 SQL 代码。</p>
             )}
           </div>
-        </div>
+        )}
 
-        {/* 点击单词即时查询弹窗 */}
+        {/* 划词弹窗 */}
         {selectedWord && (
           <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white border border-slate-200 shadow-xl rounded-2xl max-w-md w-full p-6 space-y-4">
@@ -255,7 +250,7 @@ export default function ListeningPage() {
                 <h3 className="text-2xl font-bold text-slate-900">{selectedWord}</h3>
                 <button
                   onClick={() => setSelectedWord(null)}
-                  className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+                  className="text-slate-400 hover:text-slate-600 font-bold"
                 >
                   ✕
                 </button>
@@ -277,7 +272,7 @@ export default function ListeningPage() {
                   <div>
                     <span className="text-xs font-bold text-slate-400 uppercase">释义</span>
                     <p className="text-sm text-slate-800 font-medium mt-1">
-                      {wordInfo.translation || wordInfo.meaning || '无详细释义'}
+                      {wordInfo.translation || wordInfo.meaning || '暂无释义'}
                     </p>
                   </div>
                 </div>
