@@ -9,32 +9,33 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 1. 服务端直接去请求 API（服务器不存在跨域和前端阻断问题）
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`, {
-      next: { revalidate: 3600 } // 缓存 1 小时，二次查询秒出
-    });
-
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
     if (!res.ok) {
-      return NextResponse.json({ error: `词库中未查到 "${word}"，请检查拼写` }, { status: 404 });
+      return NextResponse.json({ error: `未查到单词 "${word}"` }, { status: 404 });
     }
 
     const data = await res.json();
     const entry = data[0];
 
+    // 提取有效发音音频
+    const audioObj = entry.phonetics?.find((p: any) => p.audio && p.audio.length > 0);
+    const audioUrl = audioObj ? audioObj.audio : '';
+
     const result = {
       word: entry.word,
       phonetic: entry.phonetic || (entry.phonetics?.find((p: any) => p.text)?.text) || '',
-      translation: entry.meanings.map((m: any) => `${m.partOfSpeech}. ${m.definitions[0]?.definition || ''}`).join('; '),
-      etymology: '包含经典印欧语根与词源演变背景。',
+      audio: audioUrl,
       meanings: entry.meanings.map((m: any) => ({
         partOfSpeech: m.partOfSpeech,
-        definition: m.definitions[0]?.definition || '',
-        example: m.definitions[0]?.example || ''
+        definitions: m.definitions.map((d: any) => ({
+          definition: d.definition,
+          example: d.example || ''
+        }))
       }))
     };
 
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ error: '服务端查询超时，请稍后重试' }, { status: 500 });
+    return NextResponse.json({ error: '服务器连接超时' }, { status: 500 });
   }
 }
