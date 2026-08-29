@@ -4,9 +4,13 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// 安全初始化 Supabase，防止构建时报错
+const getSupabase = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+};
 
 const CATEGORIES = [
   { id: 'BBC', name: 'BBC Learning English', tag: '官方精选', code: 'BBC', desc: '包含 6 Minute English 等经典地道听力材料。' },
@@ -26,20 +30,27 @@ export default function ListeningPage() {
   const [activeMaterial, setActiveMaterial] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // 播放器状态
+  // 播放器与高亮状态
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 划词取词弹窗状态
+  // 查词弹窗状态
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [wordInfo, setWordInfo] = useState<any>(null);
   const [wordLoading, setWordLoading] = useState(false);
 
-  // 点击专区卡片拉取数据库
+  // 点击卡片拉取 Supabase 数据
   const handleSelectCategory = async (catId: string) => {
     setSelectedCat(catId);
     setLoading(true);
     setActiveMaterial(null);
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data } = await supabase
         .from('listening_materials')
@@ -60,20 +71,17 @@ export default function ListeningPage() {
     }
   };
 
-  // 监听播放时间同步高亮
+  // 监听音频播放进度，实时高亮字幕
   const handleTimeUpdate = () => {
     if (!audioRef.current || !activeMaterial?.transcript) return;
     const time = audioRef.current.currentTime;
-
     const index = activeMaterial.transcript.findIndex(
       (item: any) => time >= item.start && time <= item.end
     );
-    if (index !== -1) {
-      setActiveIndex(index);
-    }
+    if (index !== -1) setActiveIndex(index);
   };
 
-  // 句子跳转播放
+  // 点击句子跳转播放
   const jumpToSentence = (start: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = start;
@@ -81,7 +89,7 @@ export default function ListeningPage() {
     }
   };
 
-  // 点击单词查 Supabase 词库
+  // 点击单词划词查词
   const handleWordClick = async (rawWord: string) => {
     const cleanWord = rawWord.replace(/[^a-zA-Z]/g, '').toLowerCase();
     if (!cleanWord) return;
@@ -89,6 +97,12 @@ export default function ListeningPage() {
     setSelectedWord(cleanWord);
     setWordLoading(true);
     setWordInfo(null);
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      setWordLoading(false);
+      return;
+    }
 
     try {
       const { data } = await supabase
@@ -99,7 +113,7 @@ export default function ListeningPage() {
 
       setWordInfo(data || { word: cleanWord, meaning: '词库未收录该单词' });
     } catch {
-      setWordInfo({ word: cleanWord, meaning: '查词超时' });
+      setWordInfo({ word: cleanWord, meaning: '查询超时' });
     } finally {
       setWordLoading(false);
     }
@@ -110,7 +124,7 @@ export default function ListeningPage() {
       {/* 顶部导航栏 */}
       <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="text-xl font-black tracking-tight text-blue-600">
+          <Link href="/" className="text-xl font-black text-blue-600 tracking-tight">
             LINGUALAB
           </Link>
           <nav className="flex items-center gap-8 text-sm font-semibold text-slate-600">
@@ -123,30 +137,31 @@ export default function ListeningPage() {
         </div>
       </header>
 
-      {/* 主体内容 */}
       <main className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-10">
           <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Listening Hub</h1>
           <p className="mt-3 text-base text-slate-500">选择专区进入材料库，开始逐句精听与划词学习</p>
         </div>
 
-        {/* 还原完美的 9 大美观卡片网格 */}
+        {/* 9 大卡片网格布局 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {CATEGORIES.map((cat) => (
             <div
               key={cat.id}
-              className={`rounded-2xl border bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md ${
-                selectedCat === cat.id ? 'border-blue-600 ring-2 ring-blue-100' : 'border-slate-200/80'
+              className={`rounded-2xl border bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md flex flex-col justify-between ${
+                selectedCat === cat.id ? 'border-blue-600 ring-2 ring-blue-100' : 'border-slate-200'
               }`}
             >
-              <div className="flex items-center justify-between mb-4">
-                <span className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600">
-                  {cat.tag}
-                </span>
-                <span className="text-xs font-bold text-slate-400 tracking-wider">{cat.code}</span>
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600">
+                    {cat.tag}
+                  </span>
+                  <span className="text-xs font-bold text-slate-400">{cat.code}</span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{cat.name}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed mb-6">{cat.desc}</p>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">{cat.name}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-6 h-12 overflow-hidden">{cat.desc}</p>
               <button
                 onClick={() => handleSelectCategory(cat.id)}
                 className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-1"
@@ -157,7 +172,7 @@ export default function ListeningPage() {
           ))}
         </div>
 
-        {/* 下方动态展开数据库学习面板 */}
+        {/* 数据库内容展示区 */}
         {selectedCat && (
           <div className="rounded-2xl border border-blue-100 bg-white p-8 shadow-sm">
             <h2 className="text-xl font-bold text-slate-900 mb-6 pb-4 border-b border-slate-100">
@@ -165,10 +180,10 @@ export default function ListeningPage() {
             </h2>
 
             {loading ? (
-              <p className="text-sm text-slate-400 py-8 text-center">正在调取数据库中的材料...</p>
+              <p className="text-sm text-slate-400 py-8 text-center">正在读取 Supabase 数据库...</p>
             ) : materials.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* 篇目选择 */}
+                {/* 左侧：篇目列表 */}
                 <div className="space-y-3">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">已加载篇目</span>
                   {materials.map((m) => (
@@ -178,7 +193,7 @@ export default function ListeningPage() {
                       className={`p-4 rounded-xl border cursor-pointer transition-all ${
                         activeMaterial?.id === m.id
                           ? 'border-blue-600 bg-blue-50/50 font-bold text-blue-900 shadow-sm'
-                          : 'border-slate-200/60 bg-white hover:bg-slate-50 text-slate-700'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
                       }`}
                     >
                       <p className="text-sm leading-snug">{m.title}</p>
@@ -186,10 +201,10 @@ export default function ListeningPage() {
                   ))}
                 </div>
 
-                {/* 播放器与逐句文本 */}
+                {/* 右侧：播放器与逐句听力 */}
                 {activeMaterial && (
                   <div className="lg:col-span-2 space-y-6">
-                    <div className="rounded-xl bg-slate-50 p-5 border border-slate-200/60">
+                    <div className="rounded-xl bg-slate-50 p-5 border border-slate-200">
                       <h3 className="font-bold text-slate-900 text-lg mb-3">{activeMaterial.title}</h3>
                       <audio
                         ref={audioRef}
@@ -209,7 +224,7 @@ export default function ListeningPage() {
                             className={`p-4 rounded-xl border transition-all ${
                               isActive
                                 ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-100 shadow-sm'
-                                : 'border-slate-200/60 bg-white hover:border-slate-300'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
                             }`}
                           >
                             <div className="flex items-center justify-between mb-2">
@@ -243,13 +258,13 @@ export default function ListeningPage() {
               </div>
             ) : (
               <p className="text-sm text-slate-400 py-8 text-center">
-                该专区数据库中暂无数据。请确保已在 Supabase 运行插入数据的 SQL。
+                该专区数据库中暂无数据。
               </p>
             )}
           </div>
         )}
 
-        {/* 点词查询弹窗 */}
+        {/* 划词查词弹窗 */}
         {selectedWord && (
           <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white border border-slate-200 shadow-xl rounded-2xl max-w-md w-full p-6 space-y-4">
