@@ -1,18 +1,48 @@
-import { createClient } from '@/lib/supabase/server';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 
-export default async function CategoryListeningPage({
-  params,
-}: {
-  params: Promise<{ category: string }>;
-}) {
-  const { category } = await params;
-  const supabase = createClient();
+// 初始化 Supabase 客户端
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-  const { data: list, error } = await supabase
-    .from('listening_materials')
-    .select('*')
-    .eq('category', category);
+interface Material {
+  id: string;
+  title: string;
+  audio_url: string;
+  transcript?: string;
+  translation?: string;
+}
+
+export default function CategoryListeningPage() {
+  const params = useParams();
+  const category = params?.category as string;
+
+  const [list, setList] = useState<Material[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!category) return;
+
+    async function fetchData() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('listening_materials')
+        .select('*')
+        .eq('category', category);
+
+      if (!error && data) {
+        setList(data);
+      }
+      setLoading(false);
+    }
+
+    fetchData();
+  }, [category]);
 
   return (
     <div className="max-w-4xl mx-auto p-8">
@@ -23,7 +53,9 @@ export default async function CategoryListeningPage({
         </Link>
       </div>
 
-      {!list || list.length === 0 ? (
+      {loading ? (
+        <div className="p-8 text-center text-gray-500">正在加载听力材料...</div>
+      ) : list.length === 0 ? (
         <div className="p-8 bg-gray-50 rounded-xl text-gray-500 text-center border">
           暂无该分类下的材料，请确认数据库中包含 category 为 "{category}" 的记录。
         </div>
